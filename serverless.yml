@@ -1,0 +1,53 @@
+service: dy-feeding-cats
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  environment:
+    S3_FOOD_STORAGE: food-storage
+    S3_TIMESTAMP_STORAGE: get-time
+    S3_FILENAME: food.txt
+    EMAIL_USERNAME: barazoulaydy@gmail.com
+    EMAIL_PASSWORD: X
+    SEND_TO_EMAIL: bar@dynamicyield.com
+    SEND_FROM_EMAIL: barazoulayDY@gmail.com
+    EMAIL_SERVICE: gmail
+  region: us-east-1
+  profile: default
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:ListBucket"
+        - "s3:GetObject"
+        - "s3:PutObject"
+      Resource:
+      - 'arn:aws:s3:::${self:provider.environment.S3_FOOD_STORAGE}/*'
+      - 'arn:aws:s3:::${self:provider.environment.S3_TIMESTAMP_STORAGE}/*'
+    - Effect: "Allow"
+      Action:
+        - "rekognition:*"
+      Resource: "*" 
+
+functions:
+  hungry_cat:
+    handler: src/s3ListenerFunction.hungry_cat
+    events:
+      - s3:
+          bucket: ${self:provider.environment.S3_FOOD_STORAGE}
+          event: s3:ObjectCreated:*
+          existing: true
+      - http:
+          path: /dev
+          method: GET
+  status_check:
+    handler: src/catStatusFunction.status_check
+    events:
+#      - schedule:
+#          rate: rate(1 minute)
+      - http:
+          path: /status
+          method: GET
+plugins:
+  - serverless-offline
+  - serverless-offline-scheduler
